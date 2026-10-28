@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RupeeRoute - Smart Money Manager</title>
+<style>
+:root {
+  --primary:#5b45d6; --bg:#f4f5fb; --card:#fff;
+  --text:#22243a; --muted:#777991; --border:#e7e7f0;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:Arial,sans-serif}
+button,input,select{font:inherit}
+button{cursor:pointer;border:0;border-radius:10px;
+  padding:11px 14px;background:var(--primary);color:white}
+button.secondary{background:#ece9ff;color:var(--primary)}
+button.danger{background:#ffeded;color:#b42318}
+input,select{width:100%;padding:11px;border:1px solid var(--border);
+  border-radius:9px;background:white;color:var(--text)}
+label{font-size:13px;color:var(--muted);display:block;margin:10px 0 5px}
+header{background:var(--primary);color:white;padding:20px;
+  position:sticky;top:0;z-index:3}
+header h2{margin:0 0 5px}
+header p{margin:0;font-size:13px;opacity:.85}
+main{max-width:850px;margin:auto;padding:16px}
+.card{background:var(--card);border-radius:16px;padding:17px;
+  margin-bottom:14px;box-shadow:0 3px 15px #25254a08}
+h3{margin:0 0 13px;font-size:17px}
+h4{margin:0 0 8px}
+.muted{color:var(--muted);font-size:13px}
+.amount{font-size:28px;font-weight:bold;margin:8px 0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.stat{padding:13px;border-radius:12px;background:#f5f3ff}
+.stat strong{display:block;font-size:19px;margin-top:8px}
+.progress{height:7px;background:#eae8f4;border-radius:8px;overflow:hidden;margin-top:10px}
+.progress div{height:100%;background:var(--primary)}
+.nav{display:flex;gap:8px;overflow-x:auto;padding:4px 0 13px}
+.nav button{white-space:nowrap;flex-shrink:0}
+.nav button.active{background:#34258e}
+.row{display:flex;align-items:center;justify-content:space-between;
+  gap:10px;padding:12px 0;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:0}
+.row .grow{flex:1;min-width:0}
+.row input{max-width:105px}
+.row .small{padding:8px;font-size:12px}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hidden{display:none!important}
+.pill{display:inline-block;padding:5px 8px;background:#eeeaff;
+  color:var(--primary);border-radius:7px;font-size:12px}
+.positive{color:#16834a}.negative{color:#c33232}
+.tx{display:flex;justify-content:space-between;gap:10px;padding:12px 0;
+  border-bottom:1px solid var(--border)}
+.tx:last-child{border:0}
+.smalltext{font-size:12px;color:var(--muted);margin-top:4px}
+@media(max-width:450px){
+  main{padding:11px}.grid{grid-template-columns:1fr 1fr}
+  .formgrid{grid-template-columns:1fr}
+  header{padding:16px}
+}
+</style>
+</head>
+<body>
+
+<section id="auth" style="max-width:420px;margin:7vh auto;padding:20px">
+  <div class="card">
+    <h2 style="color:var(--primary)">₹ RupeeRoute</h2>
+    <p class="muted">Your money. Your route. Your future.</p>
+
+    <h3 id="authTitle">Create your account</h3>
+
+    <form id="authForm">
+      <label>Full name</label>
+      <input id="userName" required maxlength="60"
+        placeholder="Enter your full name">
+
+      <label>Phone number</label>
+      <input id="phone" type="tel" required
+        inputmode="numeric" pattern="[6-9][0-9]{9}"
+        maxlength="10" placeholder="10-digit Indian mobile number">
+
+      <label>Create password</label>
+      <input id="password" type="password" minlength="6"
+        required placeholder="At least 6 characters">
+
+      <label id="confirmLabel">Confirm password</label>
+      <input id="confirmPassword" type="password"
+        minlength="6" required placeholder="Re-enter password">
+
+      <button type="button" id="generateOtp"
+        style="width:100%;margin-top:15px">
+        Generate OTP
+      </button>
+
+      <div id="otpArea" class="hidden">
+        <label>Enter 6-digit OTP</label>
+        <input id="otpInput" type="text" inputmode="numeric"
+          maxlength="6" pattern="[0-9]{6}"
+          placeholder="Enter OTP">
+        <p id="otpMessage" class="muted"></p>
+      </div>
+
+      <button type="submit" id="authButton"
+        class="hidden" style="width:100%;margin-top:12px">
+        Verify OTP & Create Account
+      </button>
+    </form>
+
+    <p id="authMessage" class="muted"></p>
+
+    <p class="muted">
+      Demo version: OTP is displayed on screen for testing.
+      Real SMS verification requires a secure server.
+    </p>
+    </div>
+   </section>
+
+<div id="app" class="hidden">
+  <header>
+    <h2>◈ RupeeRoute</h2>
+    <p>Plan your salary.Manage your future</p>
+  </header>
+
+  <main>
+    <div class="nav" id="navigation"></div>
+
+    <section id="dashboard" class="page">
+      <div class="card">
+        <h3>Monthly income</h3>
+        <label>Enter your monthly amount (₹)</label>
+        <input type="number" min="0" id="income" placeholder="e.g. 30000">
+        <p class="muted">Change your income anytime. Your budget updates
+          automatically.</p>
+        <div class="amount" id="incomeDisplay">₹0.00</div>
+      </div>
+
+      <div class="grid">
+        <div class="stat">
+          <span class="muted">Allocated</span>
+          <strong id="allocated">₹0</strong>
+        </div>
+        <div class="stat">
+          <span class="muted">Remaining</span>
+          <strong id="remaining">₹0</strong>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <h3>Your five money slots</h3>
+        <div id="overview"></div>
+      </div>
+
+      <div class="card">
+        <h3>Quick transaction</h3>
+        <form id="transactionForm">
+          <div class="formgrid">
+            <div>
+              <label>Category</label>
+              <select id="txCategory"></select>
+            </div>
+            <div>
+              <label>Type</label>
+              <select id="txType">
+                <option value="expense">Expense</option>
+                <option value="deposit">Add money</option>
+              </select>
+            </div>
+          </div>
+          <label>Description</label>
+          <input id="txDescription" required placeholder="e.g. Monthly savings">
+          <label>Amount (₹)</label>
+          <input id="txAmount" type="number" min="0.01" step="0.01" required>
+          <label>Subcategory</label>
+          <select id="txSubcategory"></select>
+          <button style="width:100%;margin-top:14px">Save transaction</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>Recent transactions</h3>
+        <div id="recent"></div>
+      </div>
+    </section>
+
+    <section id="categoryPage" class="page hidden">
+      <div class="card">
+        <span class="pill" id="categoryPercentage">25%</span>
+        <h2 id="categoryTitle" style="margin-bottom:5px"></h2>
+        <p class="muted">Monthly allocation</p>
+        <div class="amount" id="categoryAmount">₹0</div>
+        <div class="progress"><div id="categoryProgress"></div></div>
+        <p class="muted" id="categorySummary"></p>
+      </div>
+
+      <div class="card">
+        <h3>Adjust monthly budget</h3>
+        <label>Percentage of monthly income</label>
+        <input id="categoryPercent" type="number" min="0" max="100"
+          step="0.1">
+        <button id="saveCategoryPercent" style="margin-top:12px">
+          Save percentage
+        </button>
+        <p class="muted">All five main percentages must total 100%.
+          Adjust the other categories if necessary.</p>
+      </div>
+
+      <div class="card">
+        <h3>Manage subcategories</h3>
+        <p class="muted">Set how this category's allocation is divided.
+          Subcategory percentages must total 100%.</p>
+        <div id="subcategories"></div>
+        <form id="addSubForm">
+          <label>New subcategory name</label>
+          <input id="newSubName" required placeholder="e.g. Mutual funds">
+          <button style="margin-top:10px">+ Add subcategory</button>
+        </form>
+        <p id="subMessage" class="muted"></p>
+      </div>
+
+      <div class="card">
+        <h3>Transactions in this category</h3>
+        <div id="categoryTransactions"></div>
+      </div>
+    </section>
+
+    <div class="card">
+      <button class="secondary" id="exportBtn">Export transactions (CSV)</button>
+      <button class="secondary" id="logoutBtn" style="float:right">
+        Lock app
+      </button>
+    </div>
+  </main>
+</div>
+
+<script>
+const DEFAULTS = [
+  {id:"investment",name:"Investment",percent:25,subs:[
+    {name:"Savings",percent:25},
+    {name:"Mutual Funds",percent:25},
+    {name:"Fixed Deposit",percent:25},
+    {name:"Other Investments",percent:25}
+  ]},
+  {id:"health",name:"Health & Emergency",percent:10,subs:[
+    {name:"Family Insurance",percent:40},
+    {name:"Medicines",percent:30},
+    {name:"Emergency Fund",percent:30}
+  ]},
+  {id:"travel",name:"Traveling",percent:15,subs:[
+    {name:"Travel Destinations",percent:50},
+    {name:"Car Insurance",percent:25},
+    {name:"Bike Insurance",percent:25}
+  ]},
+  {id:"personal",name:"Personal Expenses",percent:15,subs:[
+    {name:"Shopping",percent:40},
+    {name:"Food & Leisure",percent:30},
+    {name:"Other Personal",percent:30}
+  ]},
+  {id:"house",name:"House Expenses",percent:35,subs:[
+    {name:"Grocery",percent:50},
+    {name:"Other",percent:50}
+  ]}
+];
+
+const $ = id => document.getElementById(id);
+const money = n => new Intl.NumberFormat("en-IN",{
+  style:"currency",currency:"INR",maximumFractionDigits:2
+}).format(Number(n)||0);
+
+let data = null;
+let activePage = "dashboard";
+let authMode = localStorage.getItem("rupeeroute_user")
+  ? "login" : "create";
+
+let generatedOtp = "";
+let otpExpiry = 0;
+let verifiedPhone = "";
+
+const $ = id => document.getElementById(id);
+
+function blankData(){
+  return {
+    income: 0,
+    categories: structuredClone(DEFAULTS),
+    transactions: []
+  };
+}
+
+function loadData(){
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem("pocketsplit_data")
+    );
+    if(saved && Array.isArray(saved.categories) &&
+       Array.isArray(saved.transactions)) return saved;
+  } catch(e){}
+  return blankData();
+}
+
+function save(){
+  localStorage.setItem("pocketsplit_data", JSON.stringify(data));
+}
+
+function category(id){
+  return data.categories.find(c => c.id === id);
+}
+
+function allocation(c){
+  return data.income * c.percent / 100;
+}
+
+function spent(c){
+  return data.transactions
+    .filter(t => t.category === c.id)
+    .reduce((sum,t) =>
+      sum + (t.type === "expense" ? Number(t.amount) : 0), 0);
+}
+
+function escapeHTML(s){
+  return String(s).replace(/[&<>"']/g, ch => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;",
+    '"':"&quot;", "'":"&#39;"
+  }[ch]));
+}
+
+function showApp(){
+  $("auth").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  render();
+}
+
+function setAuthMode(mode){
+  authMode = mode;
+  generatedOtp = "";
+  verifiedPhone = "";
+
+  $("authTitle").textContent = mode === "create"
+    ? "Create your account" : "Welcome back";
+
+  $("authButton").textContent = mode === "create"
+    ? "Verify OTP & Create Account" : "Verify OTP & Login";
+
+  $("confirmLabel").classList.toggle("hidden", mode === "login");
+  $("confirmPassword").classList.toggle("hidden", mode === "login");
+  $("confirmPassword").required = mode === "create";
+
+  $("userName").classList.toggle("hidden", mode === "login");
+  $("userName").required = mode === "create";
+
+  $("generateOtp").textContent = "Generate OTP";
+  $("authButton").classList.add("hidden");
+  $("otpArea").classList.add("hidden");
+  $("authMessage").textContent = "";
+  $("otpInput").value = "";
+
+  const saved = JSON.parse(
+    localStorage.getItem("rupeeroute_user") || "null"
+  );
+
+  if(mode === "login" && saved){
+    $("userName").value = saved.name;
+    $("phone").value = saved.phone;
+  } else {
+    $("userName").value = "";
+    $("phone").value = "";
+  }
+
+  $("password").value = "";
+  $("confirmPassword").value = "";
+}
+
+function lockApp(){
+  $("app").classList.add("hidden");
+  $("auth").classList.remove("hidden");
+  setAuthMode("login");
+}
+
+$("generateOtp").addEventListener("click", () => {
+  const phone = $("phone").value.trim();
+  const password = $("password").value;
+
+  if(!/^[6-9][0-9]{9}$/.test(phone)){
+    alert("Enter a valid 10-digit Indian mobile number.");
+    return;
+  }
+
+  if(password.length < 6){
+    alert("Password must contain at least 6 characters.");
+    return;
+  }
+
+  if(authMode === "create"){
+    const name = $("userName").value.trim();
+
+    if(!name){
+      alert("Please enter your full name.");
+      return;
+    }
+
+    if(password !== $("confirmPassword").value){
+      alert("Passwords do not match.");
+      return;
+    }
+
+    if(localStorage.getItem("rupeeroute_user")){
+      alert("An account already exists on this browser. Please log in.");
+      setAuthMode("login");
+      return;
+    }
+  } else {
+    const saved = JSON.parse(
+      localStorage.getItem("rupeeroute_user") || "null"
+    );
+
+    if(!saved || saved.phone !== phone ||
+       saved.password !== password){
+      alert("Incorrect phone number or password.");
+      return;
+    }
+  }
+
+  generatedOtp = String(
+    Math.floor(100000 + Math.random() * 900000)
+  );
+  otpExpiry = Date.now() + 2 * 60 * 1000;
+  verifiedPhone = phone;
+
+  $("otpArea").classList.remove("hidden");
+  $("authButton").classList.remove("hidden");
+  $("generateOtp").textContent = "Generate new OTP";
+  $("otpMessage").textContent =
+    "DEMO OTP: " + generatedOtp +
+    " — valid for 2 minutes. Do not use this demo for real accounts.";
+  $("otpInput").value = "";
+  $("authMessage").textContent =
+    "Enter the displayed demo OTP to continue.";
+});
+
+$("authForm").addEventListener("submit", e => {
+  e.preventDefault();
+
+  if(!generatedOtp){
+    alert("Generate an OTP first.");
+    return;
+  }
+
+  if(Date.now() > otpExpiry){
+    generatedOtp = "";
+    alert("OTP expired. Generate a new OTP.");
+    return;
+  }
+
+  if($("phone").value.trim() !== verifiedPhone){
+    generatedOtp = "";
+    alert("Phone number changed. Generate a new OTP.");
+    return;
+  }
+
+  if($("otpInput").value !== generatedOtp){
+    alert("Incorrect OTP. Please try again.");
+    return;
+  }
+
+  const phone = verifiedPhone;
+
+  if(authMode === "create"){
+    const user = {
+      name: $("userName").value.trim(),
+      phone: phone,
+      password: $("password").value
+    };
+
+    localStorage.setItem("rupeeroute_user", JSON.stringify(user));
+
+    if(!localStorage.getItem("pocketsplit_data")){
+      data = blankData();
+      save();
+    }
+  } else {
+    const user = JSON.parse(
+      localStorage.getItem("rupeeroute_user")
+    );
+
+    if(!user || user.phone !== phone){
+      alert("Account verification failed.");
+      return;
+    }
+  }
+
+  generatedOtp = "";
+  data = loadData();
+  showApp();
+});
+
+$("logoutBtn").addEventListener("click", lockApp);
+
+// Existing budget, category and transaction functions
+// should remain below this section.
+
+if(localStorage.getItem("rupeeroute_user")){
+  setAuthMode("login");
+} else {
+  setAuthMode("create");
+}
+function renderNavigation(){
+  $("navigation").innerHTML=
+    `<button class="${activePage==="dashboard"?"active":""}"
+      onclick="openPage('dashboard')">Home</button>`+
+    data.categories.map(c=>
+      `<button class="${activePage===c.id?"active":""}"
+       onclick="openPage('${c.id}')">${escapeHTML(c.name)}</button>`
+    ).join("");
+}
+
+function openPage(id){
+  activePage=id;
+  $("dashboard").classList.toggle("hidden",id!=="dashboard");
+  $("categoryPage").classList.toggle("hidden",id==="dashboard");
+  renderNavigation();
+  if(id!=="dashboard")renderCategory();
+}
+
+function render(){
+  $("income").value=data.income;
+  $("incomeDisplay").textContent=money(data.income);
+  const totalPct=data.categories.reduce((s,c)=>s+c.percent,0);
+  const totalAlloc=data.categories.reduce((s,c)=>s+allocation(c),0);
+  $("allocated").textContent=money(totalAlloc);
+  $("remaining").textContent=money(data.income-totalAlloc);
+  $("remaining").style.color=totalPct===100?"":"#c33232";
+
+  $("overview").innerHTML=data.categories.map(c=>{
+    const a=allocation(c);
+    return `<div class="row">
+      <div class="grow">
+        <strong>${escapeHTML(c.name)}</strong>
+        <div class="smalltext">${c.percent}% · ${money(a)}</div>
+        <div class="progress"><div style="width:${Math.min(100,c.percent)}%"></div></div>
+      </div>
+      <button class="secondary small" onclick="openPage('${c.id}')">Open</button>
+    </div>`;
+  }).join("");
+
+  $("txCategory").innerHTML=data.categories.map(c=>
+    <option value="${c.id}">${escapeHTML(c.name)}</option>).join("");
+  updateSubcategoryOptions();
+  renderTransactions("recent");
+  if(activePage!=="dashboard")renderCategory();
+}
+
+$("income").addEventListener("change",()=>{
+  const v=Number($("income").value);
+  if(!Number.isFinite(v)||v<0){alert("Enter a valid income.");return;}
+  data.income=v;save();render();
+});
+
+$("txCategory").addEventListener("change",updateSubcategoryOptions);
+function updateSubcategoryOptions(){
+  const c=category($("txCategory").value)||data.categories[0];
+  if(!c)return;
+  $("txSubcategory").innerHTML=c.subs.map(s=>
+    <option value="${escapeHTML(s.name)}">${escapeHTML(s.name)}</option>
+  ).join("");
+}
+
+function renderCategory(){
+  const c=category(activePage);if(!c)return;
+  $("categoryTitle").textContent=c.name;
+  $("categoryPercentage").textContent=c.percent+"%";
+  $("categoryAmount").textContent=money(allocation(c));
+  $("categoryPercent").value=c.percent;
+  const used=spent(c);
+  $("categorySummary").textContent=
+    "Recorded expenses: "+money(used)+
+    " · Allocation remaining after expenses: "+money(allocation(c)-used);
+  $("categoryProgress").style.width=
+    Math.min(100,c.percent)+"%";
+  renderSubs(c);
+  renderTransactions("categoryTransactions",c.id);
+}
+
+$("saveCategoryPercent").addEventListener("click",()=>{
+  const c=category(activePage);
+  const value=Number($("categoryPercent").value);
+  if(!Number.isFinite(value)||value<0||value>100){
+    alert("Enter a percentage between 0 and 100.");return;
+  }
+  const total=data.categories.reduce((s,x)=>s+x.percent,0)-c.percent+value;
+  if(Math.abs(total-100)>0.001){
+    alert("Your main category percentages must total 100%. Current total after this change: "+total+"%. Adjust other categories first.");
+    return;
+  }
+  c.percent=value;save();render();
+});
+
+function renderSubs(c){
+  const total=c.subs.reduce((s,x)=>s+x.percent,0);
+  $("subcategories").innerHTML=c.subs.map((s,i)=>`
+    <div class="row">
+      <div class="grow">
+        <input aria-label="Subcategory name" value="${escapeHTML(s.name)}"
+          onchange="renameSub('${c.id}',${i},this.value)">
+        <div class="smalltext">Budget: ${money(allocation(c)*s.percent/100)}</div>
+      </div>
+      <input aria-label="Subcategory percentage" type="number" min="0"
+        max="100" step="0.1" value="${s.percent}"
+        onchange="setSubPercent('${c.id}',${i},this.value)">
+      <button class="danger small"
+        onclick="removeSub('${c.id}',${i})">×</button>
+    </div>`).join("");
+  $("subMessage").textContent="Subcategory total: "+total+"%";
+}
+
+function renameSub(id,i,name){
+  const c=category(id);name=name.trim();
+  if(!name){alert("Name cannot be empty.");renderCategory();return;}
+  if(c.subs.some((s,j)=>j!==i&&s.name.toLowerCase()===name.toLowerCase())){
+    alert("That subcategory already exists.");renderCategory();return;
+  }
+  const old=c.subs[i].name;
+  c.subs[i].name=name;
+  data.transactions.forEach(t=>{
+    if(t.category===id&&t.subcategory===old)t.subcategory=name;
+  });
+  save();render();
+}
+
+function setSubPercent(id,i,value){
+  const c=category(id),v=Number(value);
+  if(!Number.isFinite(v)||v<0||v>100){
+    alert("Enter a percentage from 0 to 100.");renderCategory();return;
+  }
+  const total=c.subs.reduce((s,x,j)=>s+(j===i?v:x.percent),0);
+  if(Math.abs(total-100)>0.001){
+    alert("Subcategory percentages must total 100%. Adjust another slot first.");
+    renderCategory();return;
+  }
+  c.subs[i].percent=v;save();render();
+}
+
+function removeSub(id,i){
+  const c=category(id);
+  if(!confirm("Remove this subcategory? Existing transactions will remain in the history."))return;
+  c.subs.splice(i,1);save();render();
+  if(c.subs.length===0){
+    $("subMessage").textContent="Add a subcategory to divide this budget.";
+  }
+}
+
+$("addSubForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  const c=category(activePage);
+  const name=$("newSubName").value.trim();
+  if(!name)return;
+  if(c.subs.some(s=>s.name.toLowerCase()===name.toLowerCase())){
+    alert("That subcategory already exists.");return;
+  }
+  // New slot receives 0% until the user adjusts existing percentages.
+  c.subs.push({name,percent:0});
+  $("newSubName").value="";
+  save();render();
+});
+
+$("transactionForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  const c=category($("txCategory").value);
+  const amount=Number($("txAmount").value);
+  const desc=$("txDescription").value.trim();
+  const sub=$("txSubcategory").value;
+  if(!c||!desc||!Number.isFinite(amount)||amount<=0){
+    alert("Enter valid transaction details.");return;
+  }
+  if($("txType").value==="expense"&&amount>allocation(c)){
+    if(!confirm("This expense is larger than the category's monthly allocation. Record it anyway?"))return;
+  }
+  data.transactions.unshift({
+    id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),
+    category:c.id,subcategory:sub,description:desc,
+    amount,type:$("txType").value,date:new Date().toISOString()
+  });
+  save();
+  $("txAmount").value="";$("txDescription").value="";
+  render();
+  alert("Transaction saved.");
+});
+
+function renderTransactions(target,filterId=null){
+  const list=data.transactions.filter(t=>!filterId||t.category===filterId);
+  $(target).innerHTML=list.length?list.map(t=>{
+    const c=category(t.category);
+    return `<div class="tx">
+      <div>
+        <strong>${escapeHTML(t.description)}</strong>
+        <div class="smalltext">${escapeHTML(c?c.name:"Category removed")} ·
+          ${escapeHTML(t.subcategory||"Other")} ·
+          ${new Date(t.date).toLocaleString()}</div>
+        <div class="smalltext">${t.type==="deposit"?"Money added":"Expense"}</div>
+      </div>
+      <div style="text-align:right">
+        <strong class="${t.type==="deposit"?"positive":"negative"}">
+          ${t.type==="deposit"?"+":"−"}${money(t.amount)}</strong>
+        <div><button class="danger small"
+          onclick="deleteTransaction('${t.id}')">Delete</button></div>
+      </div>
+    </div>`;
+  }).join(""):'<p class="muted">No transactions yet.</p>';
+}
+
+function deleteTransaction(id){
+  if(!confirm("Delete this transaction from history?"))return;
+  data.transactions=data.transactions.filter(t=>t.id!==id);
+  save();render();
+}
+
+$("exportBtn").addEventListener("click",()=>{
+  const rows=[["Date","Category","Subcategory","Description","Type","Amount"]];
+  data.transactions.forEach(t=>{
+    const c=category(t.category);
+    rows.push([new Date(t.date).toLocaleString(),c?c.name:"Removed",
+      t.subcategory,t.description,t.type,t.amount]);
+  });
+  const csv=rows.map(row=>row.map(v=>
+    '"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download="pocketsplit-transactions.csv";a.click();
+  URL.revokeObjectURL(url);
+});
+
+$("logoutBtn").addEventListener("click",lockApp);
+</script>
+</body>
+</html>
